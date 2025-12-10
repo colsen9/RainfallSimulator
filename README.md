@@ -23,6 +23,14 @@ additional data (e.g., name, coordinates, distance).
 The program can read the data, store it in the graph, and 
 print a readable representation of the graph.
 
+Use the citydata program to perform spatial and route-based
+computations on the POI network. It loads validated road data
+into the graph and supports command-line operations to find 
+specific locations, compute straight-line and road distances 
+between POIs, and determine the map’s diameter using the 
+Haversine distance formula and Dijkstra’s shortest-path 
+algorithm.
+
 ------------------------------------------------------------
 Repository Structure
 ------------------------------------------------------------
@@ -38,13 +46,16 @@ coms3270P1/
 ├── testgraph.c       # Main program for graph building
 ├── testgraph.h       # Node and edge data struct definitions
 │
-├── Makefile          # Build configuration for mapper and testgraph
+├── citydata.c        # Command-line tool for city graph queries
+│
+├── Makefile          # Build configuration for mapper, testgraph, and city data
 │
 ├── Ames.csv          # Large test dataset
 ├── test_valid.csv    # Valid small test file
 ├── test_invalid_id.csv # Invalid ID test
 ├── test_invalid_latitude.csv # Invalid coordinate test
-├── test_graph.csv    # Test the graph builder
+├── test_graph.csv    # Graph structure test
+├── test_citydata.csv # Small dataset for citydata testing
 │
 ├── README            # Description and usage guide
 └── DEVELOPER         # Developer documentation
@@ -73,6 +84,43 @@ Graph Construction
 - Edge `data` includes the road name
 
 ------------------------------------------------------------
+City Data Operations
+------------------------------------------------------------
+
+The citydata program performs data queries and computations 
+using the graph structure.
+
+Supported operations:
+  - `-f <filename>`  
+    Loads a city dataset (TSV file). Required for all other operations.
+
+  - `-location <name>`  
+    Finds the latitude and longitude of a specific POI.
+
+  - `-diameter`  
+    Finds the largest straight-line (great-circle) distance between 
+    any two POIs. Outputs both coordinates and the distance in meters.
+
+  - `-distance <name1> <name2>`  
+    Finds the “as the crow flies” distance between two POIs.
+
+  - `-roaddist <name1> <name2>`  
+    Computes the shortest path distance in meters between two POIs 
+    using Dijkstra’s algorithm on the road network.
+
+------------------------------------------------------------
+Command Rules
+------------------------------------------------------------
+
+- Parameters may appear in any order.  
+- Multiple operations can be combined in one command.  
+  (Outputs appear in the order parameters are listed.)  
+- Running with no parameters displays a usage statement 
+  listing all supported flags.  
+- Quoted strings (e.g., `"Atanasoff Hall"`) are parsed as a 
+  single argument.
+
+------------------------------------------------------------
 Execution
 ------------------------------------------------------------
 
@@ -84,6 +132,12 @@ To run the data validator:
 
 To run the graph builder and printer:
     ./testgraph < Ames.csv
+
+To run city data operations:
+    ./citydata < Ames.csv -location "Atanasoff Hall"
+    ./citydata < Ames.csv -distance "Atanasoff Hall" "Kildee Hall"
+    ./citydata < Ames.csv -roaddist "Ames Highschool" "Coffee Place"
+    ./citydata < Ames.csv -diameter
 
 To clean compiled files:
     make clean
@@ -99,6 +153,12 @@ Run the validator:
 
 Run the graph builder:
     ./testgraph < test_graph.csv
+
+Run the city analyzer:
+    ./citydata -f test_citydata.csv -location "Starbucks"
+    ./citydata -f test_citydata.csv -distance "Starbucks" "POI"
+    ./citydata -f test_citydata.csv -diameter
+    ./citydata -f test_citydata.csv -roaddist "Starbucks" "Home2 Suites by Hilton Ames"
 
 ------------------------------------------------------------
 Expected Outputs
@@ -121,6 +181,16 @@ Graph Printer:
     Node -1434: POI (42.0413742, -93.6425578)
         (no outgoing edges)
 
+City Data Analyzer:
+  ./citydata -f test_citydata.csv -location "Starbucks"
+      42.0119488 -93.6098681
+  ./citydata -f test_citydata.csv -distance "Starbucks" "Home2 Suites by Hilton Ames"
+      2321.93
+  ./citydata -f test_citydata.csv -diameter
+      42.0119 -93.6098 42.0413 -93.6425 4121.12
+  ./citydata -f test_citydata.csv -roaddist "Starbucks" "POI"
+      3300.45
+
 ------------------------------------------------------------
 Known Issues / Notes
 ------------------------------------------------------------
@@ -130,5 +200,11 @@ Known Issues / Notes
 - Large data files may take a few seconds to validate.
 - Graph resizing doubles array size when capacity exceeded.
 - testgraph output format may differ slightly depending on data spacing.
+- Citydata requires -f <filename> for all operations.
+- Great-circle calculations use the haversine formula.
+- Dijkstra’s algorithm runs efficiently for moderately sized datasets.
+- Edge cases: duplicate names, missing coordinates, or zero-distance roads.
+- Graph doubles capacity automatically when full.
+- Citydata output order matches command-line option order.
 
 ============================================================

@@ -22,12 +22,16 @@ coms3270P1/
 ├── testgraph.c       # Main program for graph building
 ├── testgraph.h       # Node and edge data struct definitions
 │
-├── Makefile          # Build configuration for mapper and testgraph
+├── citydata.c        # Command-line tool for city graph queries
+│
+├── Makefile          # Build configuration for mapper, testgraph, and city data
 │
 ├── Ames.csv          # Large test dataset
 ├── test_valid.csv    # Valid small test file
 ├── test_invalid_id.csv # Invalid ID test
 ├── test_invalid_latitude.csv # Invalid coordinate test
+├── test_graph.csv    # Graph structure test
+├── test_citydata.csv # Small dataset for citydata testing
 │
 ├── README            # Description and usage guide
 └── DEVELOPER         # Developer documentation
@@ -87,11 +91,24 @@ Source Files Overview
    - Creates a graph and populates it using addNode() and addEdge().
    - Calls printGraph() to display adjacency list format.
 
+8. citydata.c
+   - Implements multiple command-line utilities to analyze a city road graph:
+       - `-f <filename>`: Specifies the dataset to load (required).
+       - `-location <name>`: Finds latitude/longitude of a POI.
+       - `-diameter`: Finds farthest two POIs using great-circle distance.
+       - `-distance <A> <B>`: Computes straight-line (Haversine) distance between two POIs.
+       - `-roaddist <A> <B>`: Computes shortest path between two POIs via roads (Dijkstra).
+   - When executed without parameters, prints a detailed usage statement.
+   - Parses argv in any order; executes parameters sequentially as they appear.
+   - Uses the existing graph structure to load data efficiently.
+   - Distance calculations assume Earth radius of 6371000 meters.
+
 8. Makefile
    - Defines the build process without macros or variables.
    - Targets:
        mapper  - Builds the mapper
        testgraph   - Builds the graph builder
+       citydata   - Build the citydata analyzer
        clean   - Removes all object and executable files
 
 ------------------------------------------------------------
@@ -122,7 +139,19 @@ edge_t:
         edge_t* next
 
 poi_data_t (in testgraph.h):
-    - Stores name, latitude, and longitude for each node.
+    - Stores information about each POI (Point of Interest).
+    - Fields:
+        int id
+        char name[128]
+        double lat
+        double lon
+
+path_t (used in citydata.c for Dijkstra and distance queries):
+    - Represents a computed shortest path between POIs.
+    - Fields:
+        node_t** nodes
+        int count
+        float totalDistance
 
 ------------------------------------------------------------
 Function Summary
@@ -142,6 +171,34 @@ int main(void);
     - Calls validate().
     - Prints "VALID" or the error line number.
 
+graph_t* createGraph(void);
+void freeGraph(graph_t* graph);
+node_t* addNode(graph_t* graph, int id, void* data);
+edge_t* addEdge(graph_t* graph, int fromId, int toId, float weight, void* data);
+node_t* getNode(graph_t* graph, int id);
+edge_t* getEdge(graph_t* graph, int fromId, int toId);
+int removeNode(graph_t* graph, int id);
+int removeEdge(graph_t* graph, int fromId, int toId);
+void printGraph(graph_t* graph);
+int getNodeIndex(graph_t* graph, int id);
+float getEdgeWeight(graph_t* graph, int fromId, int toId);
+void resetGraphVisits(graph_t* graph);
+
+float haversine(double lat1, double lon1, double lat2, double lon2);
+    - Computes the great-circle distance between two points on Earth.
+
+node_t* findNodeByName(graph_t* graph, const char* name);
+    - Searches the graph for a POI matching the given name.
+
+void findCityDiameter(graph_t* graph);
+    - Determines and prints the two POIs that are farthest apart by great-circle distance.
+
+float computeShortestRoadDistance(graph_t* graph, node_t* start, node_t* end);
+    - Uses Dijkstra’s algorithm to compute the minimum road distance between two POIs.
+
+void handleCommand(graph_t* graph, int argc, char** argv);
+    - Processes command-line arguments for citydata.c and dispatches the correct function.
+
 ------------------------------------------------------------
 Compilation Instructions
 ------------------------------------------------------------
@@ -157,6 +214,12 @@ Run testgraph:
 
 Produces testgraph:
     ./testgraph
+
+Run citydata analysis:
+    make citydata
+
+Produces citydata:
+    ./citydata
 
 Clean up:
     make clean
@@ -189,6 +252,16 @@ Expected output:
     Node -1434: POI (42.0413742, -93.6425578)
         (no outgoing edges)
 
+Run the city data analyzer:
+    ./citydata -f test_citydata.csv -location "Library"
+        EXPECTED: 42.030781 -93.631913
+    ./citydata -f test_citydata.csv -distance "Library" "Mall"
+        EXPECTED: 742.9
+    ./citydata -f test_citydata.csv -diameter
+        EXPECTED: 42.025000 -93.635000 42.033000 -93.640000 925.4
+    ./citydata -f test_citydata.csv -roaddist "Library" "Stadium"
+        EXPECTED: 1100.0
+
 ------------------------------------------------------------
 Notes
 ------------------------------------------------------------
@@ -201,6 +274,12 @@ Notes
 - All heap-allocated memory is freed via freeGraph().
 - IDs are matched exactly; edge creation fails if nodes missing.
 - Output formatting is designed for clarity over compactness.
+- File input is read directly from stdin or a filename (-f).
+- Tab-separated input is required.
+- All coordinates use degrees; conversions done via Haversine formula.
+- The Dijkstra algorithm uses edge weights (distance) as meters.
+- When no arguments are provided, citydata prints a usage guide.
+- Graph memory is fully released using freeGraph().
 
 ------------------------------------------------------------
 LLM/AI Usage
