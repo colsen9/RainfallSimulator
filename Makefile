@@ -23,3 +23,13 @@ graph.o: graph.c graph.h
 
 clean:
 	rm -f mapper testgraph *.o
+
+# Part C
+citydata: citydata.o graph.o data.o
+	gcc -Wall -g -o citydata citydata.o graph.o data.o
+
+citydata.o: citydata.c graph.h testgraph.h data.h
+	gcc -Wall -g -c citydata.c
+
+clean:
+	rm -f mapper testgraph citydata *.o
